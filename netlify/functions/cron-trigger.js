@@ -4,27 +4,39 @@ const http = require('http');
 
 const SUPABASE_URL = "https://abhrrwrclzginwwtirys.supabase.co";
 const SUPABASE_KEY = "sb_publishable_e7MZt0br_4YIzt4b0TphNA_6RpIXYIh";
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const RSS_FEEDS = [
-    { name: "必应-地理", url: "https://cn.bing.com/search?q=地理&format=rss" },
-    { name: "必应-法律", url: "https://cn.bing.com/search?q=法律&format=rss" },
-];
+exports.handler = async (event) => {
+    // 获取查询参数中的 rss URL
+    const params = event.queryStringParameters || {};
+    let rssUrl = params.rss;
+    let name = params.name || "自定义源";
 
-exports.handler = async function() {
-    console.log("爬虫开始...");
-    let total = 0;
-    for (const feed of RSS_FEEDS) {
-        try {
-            const items = await fetchRss(feed.url);
-            for (const item of items) {
-                const ok = await insertToSupabase(item.title, item.link, item.content);
-                if (ok) total++;
-            }
-        } catch(e) { console.error(feed.name, e); }
+    if (!rssUrl) {
+        // 如果没有提供参数，返回帮助信息
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "Please provide ?rss=YOUR_RSS_URL" })
+        };
     }
-    return { statusCode: 200, body: JSON.stringify({ inserted: total }) };
+
+    try {
+        const items = await fetchRss(rssUrl);
+        let inserted = 0;
+        for (const item of items) {
+            const ok = await insertToSupabase(item.title, item.link, item.content);
+            if (ok) inserted++;
+        }
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ inserted, source: name, url: rssUrl })
+        };
+    } catch (err) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: err.message })
+        };
+    }
 };
 
 async function fetchRss(url) {
@@ -55,7 +67,7 @@ function parseRss(xml) {
             items.push({
                 title,
                 link,
-                content: `发布时间：${pubDate}\n摘要：${desc}\n来源：RSS自动抓取`
+                content: `发布时间：${pubDate}\n摘要：${desc}\n来源：RSS抓取`
             });
         }
     }
@@ -76,6 +88,5 @@ async function insertToSupabase(title, url, content) {
         console.error("入库失败:", error);
         return false;
     }
-    console.log(`✅ 入库: ${title.slice(0,40)}`);
     return true;
 }
