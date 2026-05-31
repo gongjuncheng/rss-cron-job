@@ -40,7 +40,7 @@
                 const resp = await fetch(fullUrl);
                 const data = await resp.json();
                 if (resp.ok) {
-                    resultDiv.innerHTML = `<span class="success">✅ 成功！插入 ${data.inserted} 条新内容</span>`;
+                    resultDiv.innerHTML = `<span class="success">✅ 成功！共 ${data.total || 0} 条，新增 ${data.inserted} 条</span>`;
                 } else {
                     resultDiv.innerHTML = `<span class="error">❌ 错误：${data.error || '未知错误'}</span>`;
                 }
