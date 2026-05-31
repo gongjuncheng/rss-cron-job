@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS 提交工具</title>
+    <style>
+        body { font-family: system-ui; max-width: 600px; margin: 2rem auto; padding: 1rem; }
+        input, button { width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; }
+        .result { margin-top: 1rem; background: #f0f0f0; padding: 0.5rem; white-space: pre-wrap; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>📡 提交 RSS 链接到搜索引擎</h1>
+    <input type="text" id="name" placeholder="源名称（可选）">
+    <input type="text" id="rssUrl" placeholder="RSS 链接（必填）" required>
+    <button id="submitBtn">立即抓取</button>
+    <div id="result" class="result"></div>
+
+    <script>
+        const FUNCTION_URL = "/.netlify/functions/cron-trigger";
+        const submitBtn = document.getElementById('submitBtn');
+        const nameInput = document.getElementById('name');
+        const urlInput = document.getElementById('rssUrl');
+        const resultDiv = document.getElementById('result');
+
+        async function fetchRss() {
+            const name = nameInput.value.trim();
+            let rssUrl = urlInput.value.trim();
+            if (!rssUrl) {
+                resultDiv.innerHTML = '<span class="error">❌ 请输入 RSS 链接</span>';
+                return;
+            }
+            resultDiv.innerHTML = '🔄 抓取中...';
+            try {
+                let fullUrl = FUNCTION_URL + '?rss=' + encodeURIComponent(rssUrl);
+                if (name) fullUrl += '&name=' + encodeURIComponent(name);
+                const resp = await fetch(fullUrl);
+                const data = await resp.json();
+                if (resp.ok) {
+                    resultDiv.innerHTML = `<span class="success">✅ 成功！插入 ${data.inserted} 条新内容</span>`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ 错误：${data.error || '未知错误'}</span>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<span class="error">❌ 网络错误：${err.message}</span>`;
+            }
+        }
+
+        submitBtn.onclick = fetchRss;
+    </script>
+</body>
+</html>
